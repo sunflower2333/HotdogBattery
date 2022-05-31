@@ -18,6 +18,7 @@ Abstract:
 //--------------------------------------------------------------------- Includes
 
 #include "SurfaceBattery.h"
+#include "Spb.h"
 #include "miniclass.tmh"
 
 //--------------------------------------------------------------------- Literals
@@ -295,7 +296,11 @@ Return Value:
 	Status = STATUS_INVALID_DEVICE_REQUEST;
 	switch (Level) {
 	case BatteryInformation:
+		SpbReadDataSynchronously(&DevExt->I2CContext, 0x3C, &DevExt->State.BatteryInfo.DesignedCapacity, 1);
+		SpbReadDataSynchronously(&DevExt->I2CContext, 0x12, &DevExt->State.BatteryInfo.FullChargedCapacity, 1);
+
 		ReturnBuffer = &DevExt->State.BatteryInfo;
+
 		ReturnBufferLength = sizeof(BATTERY_INFORMATION);
 		Status = STATUS_SUCCESS;
 		break;
@@ -465,6 +470,25 @@ Return Value:
 		Status = STATUS_NO_SUCH_DEVICE;
 		goto QueryStatusEnd;
 	}
+
+	UCHAR Flags = 0;
+	SpbReadDataSynchronously(&DevExt->I2CContext, 0x0A, &Flags, 1);
+	if (Flags & (1 << 9))
+	{
+		DevExt->State.BatteryStatus.PowerState = BATTERY_POWER_ON_LINE;
+	}
+	else if (Flags & (1 << 0))
+	{
+		DevExt->State.BatteryStatus.PowerState = BATTERY_DISCHARGING;
+	}
+	else
+	{
+		DevExt->State.BatteryStatus.PowerState = BATTERY_CHARGING;
+	}
+	
+	SpbReadDataSynchronously(&DevExt->I2CContext, 0x10, &DevExt->State.BatteryStatus.Capacity, 1);
+	SpbReadDataSynchronously(&DevExt->I2CContext, 0x08, &DevExt->State.BatteryStatus.Voltage, 1);
+	SpbReadDataSynchronously(&DevExt->I2CContext, 0x02, &DevExt->State.BatteryStatus.Rate, 1);
 
 	RtlCopyMemory(BatteryStatus,
 		&DevExt->State.BatteryStatus,
