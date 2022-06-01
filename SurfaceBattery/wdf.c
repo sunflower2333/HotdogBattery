@@ -92,7 +92,7 @@ Return Value:
 	//
 	WPP_INIT_TRACING(DriverObject, RegistryPath);
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 
 	WDF_DRIVER_CONFIG_INIT(&DriverConfig, SurfaceBatteryDriverDeviceAdd);
 	DriverConfig.EvtDriverUnload = SurfaceBatteryEvtDriverUnload;
@@ -143,7 +143,7 @@ Return Value:
 	GlobalData->RegistryPath.Buffer = WdfDriverGetRegistryPath(WdfGetDriver());
 
 DriverEntryEnd:
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving " __FUNCTION__ ": Status=0x%x\n", Status);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving %!FUNC!: Status = 0x%08lX\n", Status);
 	return Status;
 }
 
@@ -185,7 +185,7 @@ Return Value:
 
 	UNREFERENCED_PARAMETER(Driver);
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	//
@@ -292,7 +292,7 @@ Return Value:
 	}
 
 DriverDeviceAddEnd:
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving " __FUNCTION__ ": Status=0x%x\n", Status);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving %!FUNC!: Status = 0x%08lX\n", Status);
 	return Status;
 }
 
@@ -327,7 +327,7 @@ Return Value:
 	PDEVICE_OBJECT DeviceObject;
 	NTSTATUS Status;
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	DevExt = GetDeviceExtension(Device);
@@ -388,7 +388,7 @@ Return Value:
 	}
 
 DevicePrepareHardwareEnd:
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving " __FUNCTION__ ": Status=0x%x\n", Status);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving %!FUNC!: Status = 0x%08lX\n", Status);
 	return Status;
 }
 
@@ -421,7 +421,7 @@ Return Value:
 	PDEVICE_OBJECT DeviceObject;
 	NTSTATUS Status;
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	DeviceObject = WdfDeviceWdmGetDeviceObject(Device);
@@ -442,7 +442,7 @@ Return Value:
 	}
 
 	WdfWaitLockRelease(DevExt->ClassInitLock);
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving " __FUNCTION__ ": Status=0x%x\n", Status);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving %!FUNC!: Status = 0x%08lX\n", Status);
 	return;
 }
 
@@ -535,7 +535,7 @@ Return Value:
 	ULONG resourceCount;
 	ULONG i;
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	PSURFACE_BATTERY_FDO_DATA devContext = GetDeviceExtension(Device);
@@ -595,7 +595,7 @@ Return Value:
 	SurfaceBatteryPrepareHardware(Device);
 
 exit:
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving " __FUNCTION__ ": Status=0x%x\n", status);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving %!FUNC!: Status = 0x%08lX\n", status);
 	return status;
 }
 
@@ -637,7 +637,7 @@ Return Value:
 	NTSTATUS Status;
 
 	PAGED_CODE();
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 
 	ASSERTMSG("Must be called at IRQL = PASSIVE_LEVEL",
 		(KeGetCurrentIrql() == PASSIVE_LEVEL));
@@ -677,7 +677,7 @@ Return Value:
 		Status = WdfDeviceWdmDispatchPreprocessedIrp(Device, Irp);
 	}
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving " __FUNCTION__ ": Status=0x%x\n", Status);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving %!FUNC!: Status = 0x%08lX\n", Status);
 	return Status;
 }
 
@@ -720,7 +720,7 @@ Return Value:
 	SYSCTL_IRP_DISPOSITION Disposition;
 	NTSTATUS Status;
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	ASSERTMSG("Must be called at IRQL = PASSIVE_LEVEL", (KeGetCurrentIrql() == PASSIVE_LEVEL));
@@ -765,7 +765,7 @@ Return Value:
 		break;
 	}
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving " __FUNCTION__ ": Status=0x%x\n", Status);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving %!FUNC!: Status = 0x%08lX\n", Status);
 	return Status;
 }
 
@@ -832,7 +832,7 @@ Return Value:
 	UNREFERENCED_PARAMETER(MofResourceName);
 	UNREFERENCED_PARAMETER(InstanceName);
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	Device = WdfWdmDeviceGetWdfDeviceHandle(DeviceObject);
@@ -841,7 +841,7 @@ Return Value:
 	*RegistryPath = &GlobalData->RegistryPath;
 	*Pdo = WdfDeviceWdmGetPhysicalDevice(Device);
 	Status = STATUS_SUCCESS;
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving " __FUNCTION__ ": Status=0x%x\n", Status);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving %!FUNC!: Status = 0x%08lX\n", Status);
 	return Status;
 }
 
@@ -908,7 +908,7 @@ Return Value:
 	UNREFERENCED_PARAMETER(InstanceIndex);
 	UNREFERENCED_PARAMETER(InstanceCount);
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	ASSERT((InstanceIndex == 0) && (InstanceCount == 1));
@@ -945,7 +945,7 @@ Return Value:
 	}
 
 SurfaceBatteryQueryWmiDataBlockEnd:
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving " __FUNCTION__ ": Status=0x%x\n", Status);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Leaving %!FUNC!: Status = 0x%08lX\n", Status);
 	return Status;
 }
 

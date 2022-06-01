@@ -35,32 +35,63 @@ Abstract:
 
 #define SURFACE_BATTERY_TAG                 'StaB'
 
+/*
+* Rob Green, a member of the NTDEV list, provides the
+* following set of macros that'll keep you from having
+* to scratch your head and count zeros ever again.
+* Using these defintions, all you'll have to do is write:
+*
+* interval.QuadPart = RELATIVE(SECONDS(5));
+*/
+
+#ifndef ABSOLUTE
+#define ABSOLUTE(wait) (wait)
+#endif
+
+#ifndef RELATIVE
+#define RELATIVE(wait) (-(wait))
+#endif
+
+#ifndef NANOSECONDS
+#define NANOSECONDS(nanos) \
+	(((signed __int64)(nanos)) / 100L)
+#endif
+
+#ifndef MICROSECONDS
+#define MICROSECONDS(micros) \
+	(((signed __int64)(micros)) * NANOSECONDS(1000L))
+#endif
+
+#ifndef MILLISECONDS
+#define MILLISECONDS(milli) \
+	(((signed __int64)(milli)) * MICROSECONDS(1000L))
+#endif
+
+#ifndef SECONDS
+#define SECONDS(seconds) \
+	(((signed __int64)(seconds)) * MILLISECONDS(1000L))
+#endif
+
 //------------------------------------------------------------------ Definitions
+
+#define MFG_NAME_SIZE  0x3
+#define DEVICE_NAME_SIZE 0x8
+#define CHEM_SIZE 0x4
+
+#pragma pack(push, 1)
+typedef struct _BQ27742_MANUF_INFO_TYPE
+{
+    UINT16 BatteryManufactureDate;
+    UINT32 BatterySerialNumber;
+    BYTE BatteryManufactureName[MFG_NAME_SIZE];
+    BYTE BatteryDeviceName[DEVICE_NAME_SIZE];
+    BYTE Chemistry[CHEM_SIZE];
+} BQ27742_MANUF_INFO_TYPE, * PBQ27742_MANUF_INFO_TYPE;
+#pragma pack(pop)
 
 typedef struct {
     UNICODE_STRING                  RegistryPath;
 } SURFACE_BATTERY_GLOBAL_DATA, *PSURFACE_BATTERY_GLOBAL_DATA;
-
-#define SURFACE_BATTERY_STATE_VERSION_1     1
-#define SURFACE_BATTERY_STATE_VERSION       SURFACE_BATTERY_STATE_VERSION_1
-
-#define SURFACE_BATTERY_RATE_CALCULATE      0x7fffffff
-
-typedef struct {
-    USHORT                          Version;
-    BATTERY_MANUFACTURE_DATE        ManufactureDate;
-    BATTERY_INFORMATION             BatteryInfo;
-    BATTERY_STATUS                  BatteryStatus;
-    BATTERY_REPORTING_SCALE         GranularityScale[4];
-    ULONG                           GranularityCount;
-    ULONG                           EstimatedTime;
-    ULONG                           Temperature;
-    ULONG                           MaxCurrentDraw;
-    WCHAR                           DeviceName[MAX_BATTERY_STRING_SIZE];
-    WCHAR                           ManufacturerName[MAX_BATTERY_STRING_SIZE];
-    WCHAR                           SerialNumber[MAX_BATTERY_STRING_SIZE];
-    WCHAR                           UniqueId[MAX_BATTERY_STRING_SIZE];
-} SURFACE_BATTERY_STATE, * PSURFACE_BATTERY_STATE;
 
 typedef struct {
     //
@@ -87,7 +118,6 @@ typedef struct {
 
     WDFWAITLOCK                     StateLock;
     ULONG                           BatteryTag;
-    SURFACE_BATTERY_STATE           State;
 } SURFACE_BATTERY_FDO_DATA, *PSURFACE_BATTERY_FDO_DATA;
 
 //------------------------------------------------------ WDF Context Declaration

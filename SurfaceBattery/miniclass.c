@@ -21,13 +21,6 @@ Abstract:
 #include "Spb.h"
 #include "miniclass.tmh"
 
-//--------------------------------------------------------------------- Literals
-
-#define DEFAULT_NAME                L"SimulatedBattery"
-#define DEFAULT_MANUFACTURER        L"Microsoft Corp"
-#define DEFAULT_SERIALNO            L"0000"
-#define DEFAULT_UNIQUEID            L"SimulatedBattery0000"
-
 //------------------------------------------------------------------- Prototypes
 
 _IRQL_requires_same_
@@ -42,13 +35,6 @@ BCLASS_SET_INFORMATION_CALLBACK SurfaceBatterySetInformation;
 BCLASS_QUERY_STATUS_CALLBACK SurfaceBatteryQueryStatus;
 BCLASS_SET_STATUS_NOTIFY_CALLBACK SurfaceBatterySetStatusNotify;
 BCLASS_DISABLE_STATUS_NOTIFY_CALLBACK SurfaceBatteryDisableStatusNotify;
-
-_Success_(return == STATUS_SUCCESS)
-NTSTATUS
-SurfaceBatterySetBatteryString(
-	_In_ PCWSTR String,
-	_Out_writes_(MAX_BATTERY_STRING_SIZE) PWCHAR Destination
-);
 
 //---------------------------------------------------------------------- Pragmas
 
@@ -92,43 +78,17 @@ Return Value:
 	PSURFACE_BATTERY_FDO_DATA DevExt;
 	NTSTATUS Status = STATUS_SUCCESS;
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	DevExt = GetDeviceExtension(Device);
 
 	WdfWaitLockAcquire(DevExt->StateLock, NULL);
 	SurfaceBatteryUpdateTag(DevExt);
-	DevExt->State.Version = SURFACE_BATTERY_STATE_VERSION;
-	DevExt->State.BatteryStatus.PowerState = BATTERY_POWER_ON_LINE;
-	DevExt->State.BatteryStatus.Capacity = 100;
-	DevExt->State.BatteryStatus.Voltage = BATTERY_UNKNOWN_VOLTAGE;
-	DevExt->State.BatteryStatus.Rate = 0;
-	DevExt->State.BatteryInfo.Capabilities = BATTERY_SYSTEM_BATTERY |
-		BATTERY_CAPACITY_RELATIVE;
-
-	DevExt->State.BatteryInfo.Technology = 1;
-	DevExt->State.BatteryInfo.Chemistry[0] = 'F';
-	DevExt->State.BatteryInfo.Chemistry[1] = 'a';
-	DevExt->State.BatteryInfo.Chemistry[2] = 'k';
-	DevExt->State.BatteryInfo.Chemistry[3] = 'e';
-	DevExt->State.BatteryInfo.DesignedCapacity = 100;
-	DevExt->State.BatteryInfo.FullChargedCapacity = 100;
-	DevExt->State.BatteryInfo.DefaultAlert1 = 0;
-	DevExt->State.BatteryInfo.DefaultAlert2 = 0;
-	DevExt->State.BatteryInfo.CriticalBias = 0;
-	DevExt->State.BatteryInfo.CycleCount = 100;
-	DevExt->State.MaxCurrentDraw = UNKNOWN_CURRENT;
-	SurfaceBatterySetBatteryString(DEFAULT_NAME, DevExt->State.DeviceName);
-	SurfaceBatterySetBatteryString(DEFAULT_MANUFACTURER,
-		DevExt->State.ManufacturerName);
-
-	SurfaceBatterySetBatteryString(DEFAULT_SERIALNO, DevExt->State.SerialNumber);
-	SurfaceBatterySetBatteryString(DEFAULT_UNIQUEID, DevExt->State.UniqueId);
 	WdfWaitLockRelease(DevExt->StateLock);
 
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
-		"Leaving " __FUNCTION__ ": Status=0x%x\n",
+		"Leaving %!FUNC!: Status = 0x%08lX\n",
 		Status);
 	return;
 }
@@ -198,7 +158,7 @@ Return Value:
 	PSURFACE_BATTERY_FDO_DATA DevExt;
 	NTSTATUS Status;
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	DevExt = (PSURFACE_BATTERY_FDO_DATA)Context;
@@ -213,7 +173,54 @@ Return Value:
 	}
 
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
-		"Leaving " __FUNCTION__ ": Status=0x%x\n",
+		"Leaving %!FUNC!: Status = 0x%08lX\n",
+		Status);
+	return Status;
+}
+
+NTSTATUS
+SurfaceBatteryGetManufacturerBlockA(
+	PSURFACE_BATTERY_FDO_DATA DevExt,
+	PBQ27742_MANUF_INFO_TYPE ManufacturerBlockInfoA
+)
+{
+	NTSTATUS Status;
+	ULONG ResultValue;
+
+	BYTE Data[32] = { 0 };
+	
+	LARGE_INTEGER delay = { 0 };
+
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
+	
+	ResultValue = 0x01;
+	Status = SpbWriteDataSynchronously(&DevExt->I2CContext, 0x3F, &ResultValue, 1);
+	if (!NT_SUCCESS(Status))
+	{
+	    Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbWriteDataSynchronously failed with Status = 0x%08lX\n", Status);
+		goto Exit;
+	}
+
+	delay.QuadPart = RELATIVE(MILLISECONDS(1));
+	Status = KeDelayExecutionThread(KernelMode, TRUE, &delay);
+	if (!NT_SUCCESS(Status))
+	{
+	    Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "KeDelayExecutionThread failed with Status = 0x%08lX\n", Status);
+		goto Exit;
+	}
+
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x40, Data, sizeof(Data));
+	if (!NT_SUCCESS(Status))
+	{
+	    Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+		goto Exit;
+	}
+
+	RtlCopyMemory(ManufacturerBlockInfoA, Data, sizeof(BQ27742_MANUF_INFO_TYPE));
+
+Exit:
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
+		"Leaving %!FUNC!: Status = 0x%08lX\n",
 		Status);
 	return Status;
 }
@@ -270,10 +277,20 @@ Return Value:
 	PVOID ReturnBuffer;
 	size_t ReturnBufferLength;
 	NTSTATUS Status;
+	
+	BATTERY_REPORTING_SCALE ReportingScale = { 0 };
+	BATTERY_INFORMATION BatteryInformationResult = { 0 };
+	WCHAR StringResult[MAX_BATTERY_STRING_SIZE] = { 0 };
+	BATTERY_MANUFACTURE_DATE ManufactureDate = { 0 };
+
+	BQ27742_MANUF_INFO_TYPE ManufacturerBlockInfoA = { 0 };
+
+	ULONG Temperature = 0;
+	UCHAR Flags = 0;
 
 	UNREFERENCED_PARAMETER(AtRate);
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	DevExt = (PSURFACE_BATTERY_FDO_DATA)Context;
@@ -296,98 +313,206 @@ Return Value:
 	Status = STATUS_INVALID_DEVICE_REQUEST;
 	switch (Level) {
 	case BatteryInformation:
-		SpbReadDataSynchronously(&DevExt->I2CContext, 0x3C, &DevExt->State.BatteryInfo.DesignedCapacity, 1);
-		SpbReadDataSynchronously(&DevExt->I2CContext, 0x12, &DevExt->State.BatteryInfo.FullChargedCapacity, 1);
+		BatteryInformationResult.Capabilities = BATTERY_SYSTEM_BATTERY | BATTERY_CAPACITY_RELATIVE;
+		BatteryInformationResult.Technology = 1;
 
-		ReturnBuffer = &DevExt->State.BatteryInfo;
+		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
+		}
+		
+		RtlCopyMemory(BatteryInformationResult.Chemistry, ManufacturerBlockInfoA.Chemistry, sizeof(BatteryInformationResult.Chemistry));
+		
+		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x3C, &BatteryInformationResult.DesignedCapacity, 2);
+		if (!NT_SUCCESS(Status))
+		{
+			goto QueryInformationEnd;
+		}
+		
+		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x12, &BatteryInformationResult.FullChargedCapacity, 2);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
+		}
+
+		BatteryInformationResult.DefaultAlert1 = 10;
+		BatteryInformationResult.DefaultAlert2 = 20;
+		BatteryInformationResult.CriticalBias = 0;
+		
+		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x2A, &BatteryInformationResult.CycleCount, 2);
+		if (!NT_SUCCESS(Status))
+		{
+		    Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
+		}
+
+		ReturnBuffer = &BatteryInformationResult;
 
 		ReturnBufferLength = sizeof(BATTERY_INFORMATION);
 		Status = STATUS_SUCCESS;
 		break;
 
 	case BatteryEstimatedTime:
-		if (DevExt->State.EstimatedTime == SURFACE_BATTERY_RATE_CALCULATE) {
-			if (AtRate == 0) {
-				AtRate = DevExt->State.BatteryStatus.Rate;
-			}
-
-			if (AtRate < 0) {
-				ResultValue = (3600 * DevExt->State.BatteryStatus.Capacity) /
-					(-AtRate);
-
-			}
-			else {
-				ResultValue = BATTERY_UNKNOWN_TIME;
-			}
-
-		}
-		else {
-			ResultValue = DevExt->State.EstimatedTime;
+		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x0A, &Flags, 2);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
 		}
 
+		if (Flags & (1 << 9))
+		{
+			ResultValue = BATTERY_UNKNOWN_TIME;
+		}
+		else if (Flags & (1 << 0))
+		{
+			Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x16, &ResultValue, 2);
+			if (!NT_SUCCESS(Status))
+			{
+				Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+				goto QueryInformationEnd;
+			}
+
+			ResultValue *= 60;
+		}
+		else if (Flags & (1 << 1))
+		{
+			Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x16, &ResultValue, 2);
+			if (!NT_SUCCESS(Status))
+			{
+				Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+				goto QueryInformationEnd;
+			}
+
+			ResultValue *= 60;
+		}
+		else
+		{
+			ResultValue = BATTERY_UNKNOWN_TIME;
+		}
+		
 		ReturnBuffer = &ResultValue;
 		ReturnBufferLength = sizeof(ResultValue);
 		Status = STATUS_SUCCESS;
 		break;
 
 	case BatteryUniqueID:
-		ReturnBuffer = DevExt->State.UniqueId;
-		Status = RtlStringCbLengthW(DevExt->State.UniqueId,
-			sizeof(DevExt->State.UniqueId),
+		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
+		}
+
+		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%S%S%I32d%I32d", ManufacturerBlockInfoA.BatteryManufactureName, ManufacturerBlockInfoA.BatteryDeviceName, ManufacturerBlockInfoA.BatteryManufactureDate, ManufacturerBlockInfoA.BatterySerialNumber);
+
+		ReturnBuffer = StringResult;
+		Status = RtlStringCbLengthW(StringResult,
+			sizeof(StringResult),
 			&ReturnBufferLength);
 
 		ReturnBufferLength += sizeof(WCHAR);
+		Status = STATUS_SUCCESS;
 		break;
 
 	case BatteryManufactureName:
-		ReturnBuffer = DevExt->State.ManufacturerName;
-		Status = RtlStringCbLengthW(DevExt->State.ManufacturerName,
-			sizeof(DevExt->State.ManufacturerName),
+		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
+		}
+
+		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%S", ManufacturerBlockInfoA.BatteryManufactureName);
+
+		ReturnBuffer = StringResult;
+		Status = RtlStringCbLengthW(StringResult,
+			sizeof(StringResult),
 			&ReturnBufferLength);
 
 		ReturnBufferLength += sizeof(WCHAR);
+		Status = STATUS_SUCCESS;
 		break;
 
 	case BatteryDeviceName:
-		ReturnBuffer = DevExt->State.DeviceName;
-		Status = RtlStringCbLengthW(DevExt->State.DeviceName,
-			sizeof(DevExt->State.DeviceName),
+		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
+		}
+
+		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%S", ManufacturerBlockInfoA.BatteryDeviceName);
+
+		ReturnBuffer = StringResult;
+		Status = RtlStringCbLengthW(StringResult,
+			sizeof(StringResult),
 			&ReturnBufferLength);
 
 		ReturnBufferLength += sizeof(WCHAR);
+		Status = STATUS_SUCCESS;
 		break;
 
 	case BatterySerialNumber:
-		ReturnBuffer = DevExt->State.SerialNumber;
-		Status = RtlStringCbLengthW(DevExt->State.SerialNumber,
-			sizeof(DevExt->State.SerialNumber),
+		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
+		}
+		
+		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%I32d", ManufacturerBlockInfoA.BatterySerialNumber);
+		
+		ReturnBuffer = StringResult;
+		Status = RtlStringCbLengthW(StringResult,
+			sizeof(StringResult),
 			&ReturnBufferLength);
 
 		ReturnBufferLength += sizeof(WCHAR);
+		Status = STATUS_SUCCESS;
 		break;
 
 	case BatteryManufactureDate:
-		if (DevExt->State.ManufactureDate.Day != 0) {
-			ReturnBuffer = &DevExt->State.ManufactureDate;
-			ReturnBufferLength = sizeof(BATTERY_MANUFACTURE_DATE);
-			Status = STATUS_SUCCESS;
+		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
 		}
 
+		ManufactureDate.Year = ManufacturerBlockInfoA.BatteryManufactureDate;
+		ReturnBuffer = &ManufactureDate;
+		ReturnBufferLength = sizeof(BATTERY_MANUFACTURE_DATE);
+		Status = STATUS_SUCCESS;
 		break;
 
 	case BatteryGranularityInformation:
-		if (DevExt->State.GranularityCount > 0) {
-			ReturnBuffer = DevExt->State.GranularityScale;
-			ReturnBufferLength = DevExt->State.GranularityCount *
-				sizeof(BATTERY_REPORTING_SCALE);
-
-			Status = STATUS_SUCCESS;
+		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x12, &ReportingScale.Capacity, 2);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
 		}
 
+		ReportingScale.Granularity = 1;
+		
+		ReturnBuffer = &ReportingScale;
+		ReturnBufferLength = sizeof(BATTERY_REPORTING_SCALE);
+		Status = STATUS_SUCCESS;
 		break;
 
 	case BatteryTemperature:
-		ReturnBuffer = &DevExt->State.Temperature;
+		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x06, &Temperature, 2);
+		if (!NT_SUCCESS(Status))
+		{
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+			goto QueryInformationEnd;
+		}
+
+		ReturnBuffer = &Temperature;
 		ReturnBufferLength = sizeof(ULONG);
 		Status = STATUS_SUCCESS;
 		break;
@@ -420,7 +545,7 @@ Return Value:
 QueryInformationEnd:
 	WdfWaitLockRelease(DevExt->StateLock);
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
-		"Leaving " __FUNCTION__ ": Status=0x%x\n",
+		"Leaving %!FUNC!: Status = 0x%08lX\n",
 		Status);
 	return Status;
 }
@@ -461,7 +586,7 @@ Return Value:
 	PSURFACE_BATTERY_FDO_DATA DevExt;
 	NTSTATUS Status;
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	DevExt = (PSURFACE_BATTERY_FDO_DATA)Context;
@@ -472,34 +597,57 @@ Return Value:
 	}
 
 	UCHAR Flags = 0;
-	SpbReadDataSynchronously(&DevExt->I2CContext, 0x0A, &Flags, 1);
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x0A, &Flags, 2);
+	if (!NT_SUCCESS(Status))
+	{
+		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+		goto QueryStatusEnd;
+	}
+	
 	if (Flags & (1 << 9))
 	{
-		DevExt->State.BatteryStatus.PowerState = BATTERY_POWER_ON_LINE;
+		BatteryStatus->PowerState = BATTERY_POWER_ON_LINE;
 	}
 	else if (Flags & (1 << 0))
 	{
-		DevExt->State.BatteryStatus.PowerState = BATTERY_DISCHARGING;
+		BatteryStatus->PowerState = BATTERY_DISCHARGING;
+	}
+	else if (Flags & (1 << 1))
+	{
+		BatteryStatus->PowerState = BATTERY_CRITICAL;
 	}
 	else
 	{
-		DevExt->State.BatteryStatus.PowerState = BATTERY_CHARGING;
+		BatteryStatus->PowerState = BATTERY_CHARGING;
 	}
 	
-	SpbReadDataSynchronously(&DevExt->I2CContext, 0x10, &DevExt->State.BatteryStatus.Capacity, 1);
-	SpbReadDataSynchronously(&DevExt->I2CContext, 0x08, &DevExt->State.BatteryStatus.Voltage, 1);
-	SpbReadDataSynchronously(&DevExt->I2CContext, 0x02, &DevExt->State.BatteryStatus.Rate, 1);
-
-	RtlCopyMemory(BatteryStatus,
-		&DevExt->State.BatteryStatus,
-		sizeof(BATTERY_STATUS));
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x10, &BatteryStatus->Capacity, 2);
+	if (!NT_SUCCESS(Status))
+	{
+		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+		goto QueryStatusEnd;
+	}
+	
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x08, &BatteryStatus->Voltage, 2);
+	if (!NT_SUCCESS(Status))
+	{
+		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+		goto QueryStatusEnd;
+	}
+	
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x02, &BatteryStatus->Rate, 2);
+	if (!NT_SUCCESS(Status))
+	{
+		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+		goto QueryStatusEnd;
+	}
 
 	Status = STATUS_SUCCESS;
 
 QueryStatusEnd:
 	WdfWaitLockRelease(DevExt->StateLock);
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
-		"Leaving " __FUNCTION__ ": Status=0x%x\n",
+		"Leaving %!FUNC!: Status = 0x%08lX\n",
 		Status);
 	return Status;
 }
@@ -543,7 +691,7 @@ Return Value:
 
 	UNREFERENCED_PARAMETER(BatteryNotify);
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	DevExt = (PSURFACE_BATTERY_FDO_DATA)Context;
@@ -558,7 +706,7 @@ Return Value:
 SetStatusNotifyEnd:
 	WdfWaitLockRelease(DevExt->StateLock);
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
-		"Leaving " __FUNCTION__ ": Status=0x%x\n",
+		"Leaving %!FUNC!: Status = 0x%08lX\n",
 		Status);
 	return Status;
 }
@@ -593,12 +741,12 @@ Return Value:
 
 	UNREFERENCED_PARAMETER(Context);
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	Status = STATUS_NOT_SUPPORTED;
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
-		"Leaving " __FUNCTION__ ": Status=0x%x\n",
+		"Leaving %!FUNC!: Status = 0x%08lX\n",
 		Status);
 	return Status;
 }
@@ -639,7 +787,7 @@ Return Value:
 	PSURFACE_BATTERY_FDO_DATA DevExt;
 	NTSTATUS Status;
 
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering " __FUNCTION__ "\n");
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 	PAGED_CODE();
 
 	DevExt = (PSURFACE_BATTERY_FDO_DATA)Context;
@@ -655,10 +803,10 @@ Return Value:
 	}
 	else if (Level == BatteryChargingSource) {
 		ChargingSource = (PBATTERY_CHARGING_SOURCE)Buffer;
-		DevExt->State.MaxCurrentDraw = ChargingSource->MaxCurrent;
+		//DevExt->State.MaxCurrentDraw = ChargingSource->MaxCurrent;
 		Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
 			"SurfaceBattery : Set MaxCurrentDraw = %u mA\n",
-			DevExt->State.MaxCurrentDraw);
+			ChargingSource->MaxCurrent);
 
 		Status = STATUS_SUCCESS;
 	}
@@ -669,39 +817,7 @@ Return Value:
 SetInformationEnd:
 	WdfWaitLockRelease(DevExt->StateLock);
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
-		"Leaving " __FUNCTION__ ": Status=0x%x\n",
+		"Leaving %!FUNC!: Status = 0x%08lX\n",
 		Status);
 	return Status;
-}
-
-_Use_decl_annotations_
-NTSTATUS
-SurfaceBatterySetBatteryString(
-	PCWSTR String,
-	PWCHAR Destination
-)
-
-/*++
-
-Routine Description:
-
-	Set one of the simulated battery strings.
-
-Arguments:
-
-	String - Supplies the new string value to set.
-
-	Destination - Supplies a pointer to the buffer to store the new string.
-
-Return Value:
-
-   NTSTATUS
-
---*/
-
-{
-
-	PAGED_CODE();
-
-	return RtlStringCchCopyW(Destination, MAX_BATTERY_STRING_SIZE, String);
 }
