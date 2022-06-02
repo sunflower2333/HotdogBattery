@@ -338,8 +338,8 @@ Return Value:
 			goto QueryInformationEnd;
 		}
 
-		BatteryInformationResult.DefaultAlert1 = 10;
-		BatteryInformationResult.DefaultAlert2 = 20;
+		BatteryInformationResult.DefaultAlert1 = 75;
+		BatteryInformationResult.DefaultAlert2 = 150;
 		BatteryInformationResult.CriticalBias = 0;
 		
 		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x2A, &BatteryInformationResult.CycleCount, 2);
@@ -363,11 +363,7 @@ Return Value:
 			goto QueryInformationEnd;
 		}
 
-		if (Flags & (1 << 9))
-		{
-			ResultValue = BATTERY_UNKNOWN_TIME;
-		}
-		else if (Flags & (1 << 0))
+		if (Flags & (1 << 0) || Flags & (1 << 1))
 		{
 			Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x16, &ResultValue, 2);
 			if (!NT_SUCCESS(Status))
@@ -376,18 +372,14 @@ Return Value:
 				goto QueryInformationEnd;
 			}
 
-			ResultValue *= 60;
-		}
-		else if (Flags & (1 << 1))
-		{
-			Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x16, &ResultValue, 2);
-			if (!NT_SUCCESS(Status))
+			if (ResultValue == 0xFFFF)
 			{
-				Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
-				goto QueryInformationEnd;
+				ResultValue = BATTERY_UNKNOWN_TIME;
 			}
-
-			ResultValue *= 60;
+			else
+			{
+				ResultValue *= 60;
+			}
 		}
 		else
 		{
@@ -635,7 +627,7 @@ Return Value:
 		goto QueryStatusEnd;
 	}
 	
-	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x02, &BatteryStatus->Rate, 2);
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x14, &BatteryStatus->Rate, 2);
 	if (!NT_SUCCESS(Status))
 	{
 		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
