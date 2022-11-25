@@ -22,7 +22,7 @@
 
 --*/
 
-#include "SurfaceBattery.h"
+#include "HotdogBattery.h"
 #include "spb.h"
 #include <spb.tmh>
 

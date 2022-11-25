@@ -4,11 +4,11 @@
 ;
 ;Module Name:
 ;
-;    SurfaceBattery.inf
+;    HotdogBattery.inf
 ;
 ;Abstract:
 ;
-;    INF file for installing Surface Battery Miniclass driver.
+;    INF file for installing Hotdog Battery Miniclass driver.
 ;
 ;--*/
 
@@ -18,7 +18,7 @@ Class=Battery
 ClassGuid={72631e54-78a4-11d0-bcf7-00aa00b7b32a}
 Provider=%ProviderName%
 DriverVer = 06/15/2020,2.35.139.0
-CatalogFile=SurfaceBattery.cat
+CatalogFile=HotdogBattery.cat
 PnpLockdown=1
 
 [DestinationDirs]
@@ -28,39 +28,39 @@ DefaultDestDir = 13
 1 = %DiskId1%,,,""
 
 [SourceDisksFiles]
-SurfaceBattery.sys  = 1,,
+HotdogBattery.sys  = 1,,
 
 ;*****************************************
-; Surface Battery Mini Class Install Section
+; Hotdog Battery Mini Class Install Section
 ;*****************************************
 
 [Manufacturer]
 %ProviderName%=Standard,NT$ARCH$
 
 [Standard.NT$ARCH$]
-%SurfaceBattery.DeviceDesc% = SurfaceBattery_Device, ACPI\BQ27742
+%HotdogBattery.DeviceDesc% = HotdogBattery_Device, ACPI\BQ27541
 
-[SurfaceBattery_Device.NT]
-CopyFiles=SurfaceBattery_Device_Drivers
+[HotdogBattery_Device.NT]
+CopyFiles=HotdogBattery_Device_Drivers
 Include=battery.inf
 Needs=Battery_Inst
 
-[SurfaceBattery_Device_Drivers]
-SurfaceBattery.sys
+[HotdogBattery_Device_Drivers]
+HotdogBattery.sys
 
 ;-------------- Service installation
 
-[SurfaceBattery_Device.NT.Services]
-AddService = SurfaceBattery,%SPSVCINST_ASSOCSERVICE%,SurfaceBattery_Service_Inst
+[HotdogBattery_Device.NT.Services]
+AddService = HotdogBattery,%SPSVCINST_ASSOCSERVICE%,HotdogBattery_Service_Inst
 
-; -------------- SurfaceBattery driver install sections
+; -------------- HotdogBattery driver install sections
 
-[SurfaceBattery_Service_Inst]
-DisplayName    = %SurfaceBattery.SVCDESC%
+[HotdogBattery_Service_Inst]
+DisplayName    = %HotdogBattery.SVCDESC%
 ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
 StartType      = 3               ; SERVICE_DEMAND_START
 ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
-ServiceBinary  = %13%\SurfaceBattery.sys
+ServiceBinary  = %13%\HotdogBattery.sys
 
 ;*****************************************
 ; Literals
@@ -68,7 +68,7 @@ ServiceBinary  = %13%\SurfaceBattery.sys
 
 [Strings]
 SPSVCINST_ASSOCSERVICE= 0x00000002
-ProviderName = "Surface"
-DiskId1 = "Surface Battery Mini Class Installation Disk"
-SurfaceBattery.DeviceDesc = "Surface Battery"
-SurfaceBattery.SVCDESC = "Surface Battery"
+ProviderName = "Hotdog"
+DiskId1 = "Hotdog Battery Mini Class Installation Disk"
+HotdogBattery.DeviceDesc = "Hotdog Battery"
+HotdogBattery.SVCDESC = "Hotdog Battery"

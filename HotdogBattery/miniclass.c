@@ -9,51 +9,52 @@ Module Name:
 Abstract:
 
 	This module implements battery miniclass functionality specific to the
-	Surface battery driver.
+	Hotdog battery driver.
 
 	N.B. This code is provided "AS IS" without any expressed or implied warranty.
 
 --*/
+// TODO: FIX the Charge Count.
 
 //--------------------------------------------------------------------- Includes
 
-#include "SurfaceBattery.h"
+#include "HotdogBattery.h"
 #include "Spb.h"
 #include "usbfnbase.h"
 #include "miniclass.tmh"
 
 //------------------------------------------------------------------- Prototypes
 
-#define SurfaceBatteryConvertToWatts(Value) ((Value) * 3830) / 1000
+#define HotdogBatteryConvertToWatts(Value) ((Value) * 3870) / 1000
 
 _IRQL_requires_same_
 VOID
-SurfaceBatteryUpdateTag(
+HotdogBatteryUpdateTag(
 	_Inout_ PSURFACE_BATTERY_FDO_DATA DevExt
 );
 
-BCLASS_QUERY_TAG_CALLBACK SurfaceBatteryQueryTag;
-BCLASS_QUERY_INFORMATION_CALLBACK SurfaceBatteryQueryInformation;
-BCLASS_SET_INFORMATION_CALLBACK SurfaceBatterySetInformation;
-BCLASS_QUERY_STATUS_CALLBACK SurfaceBatteryQueryStatus;
-BCLASS_SET_STATUS_NOTIFY_CALLBACK SurfaceBatterySetStatusNotify;
-BCLASS_DISABLE_STATUS_NOTIFY_CALLBACK SurfaceBatteryDisableStatusNotify;
+BCLASS_QUERY_TAG_CALLBACK HotdogBatteryQueryTag;
+BCLASS_QUERY_INFORMATION_CALLBACK HotdogBatteryQueryInformation;
+BCLASS_SET_INFORMATION_CALLBACK HotdogBatterySetInformation;
+BCLASS_QUERY_STATUS_CALLBACK HotdogBatteryQueryStatus;
+BCLASS_SET_STATUS_NOTIFY_CALLBACK HotdogBatterySetStatusNotify;
+BCLASS_DISABLE_STATUS_NOTIFY_CALLBACK HotdogBatteryDisableStatusNotify;
 
 //---------------------------------------------------------------------- Pragmas
 
-#pragma alloc_text(PAGE, SurfaceBatteryPrepareHardware)
-#pragma alloc_text(PAGE, SurfaceBatteryUpdateTag)
-#pragma alloc_text(PAGE, SurfaceBatteryQueryTag)
-#pragma alloc_text(PAGE, SurfaceBatteryQueryInformation)
-#pragma alloc_text(PAGE, SurfaceBatteryQueryStatus)
-#pragma alloc_text(PAGE, SurfaceBatterySetStatusNotify)
-#pragma alloc_text(PAGE, SurfaceBatteryDisableStatusNotify)
-#pragma alloc_text(PAGE, SurfaceBatterySetInformation)
+#pragma alloc_text(PAGE, HotdogBatteryPrepareHardware)
+#pragma alloc_text(PAGE, HotdogBatteryUpdateTag)
+#pragma alloc_text(PAGE, HotdogBatteryQueryTag)
+#pragma alloc_text(PAGE, HotdogBatteryQueryInformation)
+#pragma alloc_text(PAGE, HotdogBatteryQueryStatus)
+#pragma alloc_text(PAGE, HotdogBatterySetStatusNotify)
+#pragma alloc_text(PAGE, HotdogBatteryDisableStatusNotify)
+#pragma alloc_text(PAGE, HotdogBatterySetInformation)
 
 //------------------------------------------------------------ Battery Interface
 _Use_decl_annotations_
 VOID
-SurfaceBatteryPrepareHardware(
+HotdogBatteryPrepareHardware(
 	WDFDEVICE Device
 )
 
@@ -84,7 +85,7 @@ Return Value:
 	DevExt = GetDeviceExtension(Device);
 
 	WdfWaitLockAcquire(DevExt->StateLock, NULL);
-	SurfaceBatteryUpdateTag(DevExt);
+	HotdogBatteryUpdateTag(DevExt);
 	WdfWaitLockRelease(DevExt->StateLock);
 
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
@@ -95,7 +96,7 @@ Return Value:
 
 _Use_decl_annotations_
 VOID
-SurfaceBatteryUpdateTag(
+HotdogBatteryUpdateTag(
 	PSURFACE_BATTERY_FDO_DATA DevExt
 )
 
@@ -131,7 +132,7 @@ Return Value:
 
 _Use_decl_annotations_
 NTSTATUS
-SurfaceBatteryQueryTag(
+HotdogBatteryQueryTag(
 	PVOID Context,
 	PULONG BatteryTag
 )
@@ -179,59 +180,12 @@ Return Value:
 }
 
 NTSTATUS
-SurfaceBatteryGetManufacturerBlockA(
-	PSURFACE_BATTERY_FDO_DATA DevExt,
-	PBQ27742_MANUF_INFO_TYPE ManufacturerBlockInfoA
-)
-{
-	NTSTATUS Status;
-	ULONG ResultValue;
-	BYTE Data[32] = { 0 };
-	LARGE_INTEGER delay = { 0 };
-
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
-
-	ResultValue = 0x01;
-	Status = SpbWriteDataSynchronously(&DevExt->I2CContext, 0x3F, &ResultValue, 1);
-	if (!NT_SUCCESS(Status))
-	{
-		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbWriteDataSynchronously failed with Status = 0x%08lX\n", Status);
-		goto Exit;
-	}
-
-	delay.QuadPart = RELATIVE(MILLISECONDS(1));
-	Status = KeDelayExecutionThread(KernelMode, TRUE, &delay);
-	if (!NT_SUCCESS(Status))
-	{
-		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "KeDelayExecutionThread failed with Status = 0x%08lX\n", Status);
-		goto Exit;
-	}
-
-	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x40, Data, sizeof(Data));
-	if (!NT_SUCCESS(Status))
-	{
-		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
-		goto Exit;
-	}
-
-	RtlCopyMemory(ManufacturerBlockInfoA, Data, sizeof(BQ27742_MANUF_INFO_TYPE));
-
-Exit:
-	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE,
-		"Leaving %!FUNC!: Status = 0x%08lX\n",
-		Status);
-	return Status;
-}
-
-NTSTATUS
-SurfaceBatteryQueryBatteryInformation(
+HotdogBatteryQueryBatteryInformation(
 	PSURFACE_BATTERY_FDO_DATA DevExt,
 	PBATTERY_INFORMATION BatteryInformationResult
 )
 {
 	NTSTATUS Status;
-	BQ27742_MANUF_INFO_TYPE ManufacturerBlockInfoA = { 0 };
-
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
 
 	BatteryInformationResult->Capabilities =
@@ -243,15 +197,8 @@ SurfaceBatteryQueryBatteryInformation(
 	// BATTERY_CAPACITY_RELATIVE |
 	BatteryInformationResult->Technology = 1;
 
-	Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
-	if (!NT_SUCCESS(Status))
-	{
-		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
-		goto Exit;
-	}
-
-	RtlCopyMemory(BatteryInformationResult->Chemistry, ManufacturerBlockInfoA.Chemistry, sizeof(BatteryInformationResult->Chemistry));
-
+	BYTE LION[4] = {'L','I','O','N'};
+	RtlCopyMemory(BatteryInformationResult->Chemistry, LION, 4);
 	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x3C, &BatteryInformationResult->DesignedCapacity, 2);
 	if (!NT_SUCCESS(Status))
 	{
@@ -259,16 +206,19 @@ SurfaceBatteryQueryBatteryInformation(
 		goto Exit;
 	}
 
-	BatteryInformationResult->DesignedCapacity = SurfaceBatteryConvertToWatts(BatteryInformationResult->DesignedCapacity);
-
-	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x12, &BatteryInformationResult->FullChargedCapacity, 2);
+	BatteryInformationResult->DesignedCapacity = HotdogBatteryConvertToWatts(BatteryInformationResult->DesignedCapacity);
+	
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x0A, &BatteryInformationResult->FullChargedCapacity, 2);
 	if (!NT_SUCCESS(Status))
 	{
 		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
 		goto Exit;
 	}
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "FullChargedCapacity 0x13: %x", BatteryInformationResult->FullChargedCapacity);
 
-	BatteryInformationResult->FullChargedCapacity = SurfaceBatteryConvertToWatts(BatteryInformationResult->FullChargedCapacity);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "FullChargedCapacity BeforeTransfer 0x12: %x", BatteryInformationResult->FullChargedCapacity);
+	BatteryInformationResult->FullChargedCapacity = HotdogBatteryConvertToWatts(BatteryInformationResult->FullChargedCapacity);
+	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "FullChargedCapacity AfterTransfer: %x", BatteryInformationResult->FullChargedCapacity);
 
 	BatteryInformationResult->DefaultAlert1 = BatteryInformationResult->FullChargedCapacity * 7 / 100; // 7% of total capacity for error
 	BatteryInformationResult->DefaultAlert2 = BatteryInformationResult->FullChargedCapacity * 9 / 100; // 9% of total capacity for warning
@@ -315,7 +265,7 @@ Exit:
 }
 
 NTSTATUS
-SurfaceBatteryQueryBatteryEstimatedTime(
+HotdogBatteryQueryBatteryEstimatedTime(
 	PSURFACE_BATTERY_FDO_DATA DevExt,
 	LONG AtRate,
 	PULONG ResultValue
@@ -329,7 +279,7 @@ SurfaceBatteryQueryBatteryEstimatedTime(
 
 	if (AtRate == 0)
 	{
-		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x0A, &Flags, 2);
+		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x06, &Flags, 2);
 		if (!NT_SUCCESS(Status))
 		{
 			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
@@ -338,7 +288,7 @@ SurfaceBatteryQueryBatteryEstimatedTime(
 
 		if (Flags & (1 << 0) || Flags & (1 << 1))
 		{
-			Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x16, &ETA, 2);
+			Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x0C, &ETA, 2);
 			if (!NT_SUCCESS(Status))
 			{
 				Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
@@ -395,7 +345,7 @@ Exit:
 
 _Use_decl_annotations_
 NTSTATUS
-SurfaceBatteryQueryInformation(
+HotdogBatteryQueryInformation(
 	PVOID Context,
 	ULONG BatteryTag,
 	BATTERY_QUERY_INFORMATION_LEVEL Level,
@@ -451,8 +401,6 @@ Return Value:
 	WCHAR StringResult[MAX_BATTERY_STRING_SIZE] = { 0 };
 	BATTERY_MANUFACTURE_DATE ManufactureDate = { 0 };
 
-	BQ27742_MANUF_INFO_TYPE ManufacturerBlockInfoA = { 0 };
-
 	ULONG Temperature = 0;
 
 	Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_TRACE, "Entering %!FUNC!\n");
@@ -475,10 +423,10 @@ Return Value:
 	Status = STATUS_INVALID_DEVICE_REQUEST;
 	switch (Level) {
 	case BatteryInformation:
-		Status = SurfaceBatteryQueryBatteryInformation(DevExt, &BatteryInformationResult);
+		Status = HotdogBatteryQueryBatteryInformation(DevExt, &BatteryInformationResult);
 		if (!NT_SUCCESS(Status))
 		{
-			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryQueryBatteryInformation failed with Status = 0x%08lX\n", Status);
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "HotdogBatteryQueryBatteryInformation failed with Status = 0x%08lX\n", Status);
 			goto Exit;
 		}
 
@@ -488,10 +436,10 @@ Return Value:
 		break;
 
 	case BatteryEstimatedTime:
-		Status = SurfaceBatteryQueryBatteryEstimatedTime(DevExt, AtRate, &ResultValue);
+		Status = HotdogBatteryQueryBatteryEstimatedTime(DevExt, AtRate, &ResultValue);
 		if (!NT_SUCCESS(Status))
 		{
-			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryQueryBatteryEstimatedTime failed with Status = 0x%08lX\n", Status);
+			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "HotdogBatteryQueryBatteryEstimatedTime failed with Status = 0x%08lX\n", Status);
 			goto Exit;
 		}
 
@@ -501,27 +449,27 @@ Return Value:
 		break;
 
 	case BatteryUniqueID:
-		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
-		if (!NT_SUCCESS(Status))
-		{
-			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
-			goto Exit;
-		}
+		//Status = HotdogBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		//if (!NT_SUCCESS(Status))
+		//{
+		//	Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "HotdogBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+		//	goto Exit;
+		//}
 
-		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%c%c%c%c%c%c%c%c%c%c%c%d%u",
-			ManufacturerBlockInfoA.BatteryManufactureName[0],
-			ManufacturerBlockInfoA.BatteryManufactureName[1],
-			ManufacturerBlockInfoA.BatteryManufactureName[2],
-			ManufacturerBlockInfoA.BatteryDeviceName[0],
-			ManufacturerBlockInfoA.BatteryDeviceName[1],
-			ManufacturerBlockInfoA.BatteryDeviceName[2],
-			ManufacturerBlockInfoA.BatteryDeviceName[3],
-			ManufacturerBlockInfoA.BatteryDeviceName[4],
-			ManufacturerBlockInfoA.BatteryDeviceName[5],
-			ManufacturerBlockInfoA.BatteryDeviceName[6],
-			ManufacturerBlockInfoA.BatteryDeviceName[7],
-			ManufacturerBlockInfoA.BatteryManufactureDate,
-			ManufacturerBlockInfoA.BatterySerialNumber);
+		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%c%c%c%c%c%c%c%c%c%c%c%c%u",
+			'O',
+			'P',
+			'7',
+			'P',
+			'P',
+			'B',
+			'A',
+			'T',
+			'T',
+			'E',
+			'R',
+			'Y',
+			2333);
 
 		Trace(
 			TRACE_LEVEL_INFORMATION,
@@ -544,17 +492,17 @@ Return Value:
 		break;
 
 	case BatteryManufactureName:
-		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
-		if (!NT_SUCCESS(Status))
-		{
-			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
-			goto Exit;
-		}
+		//Status = HotdogBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		//if (!NT_SUCCESS(Status))
+		//{
+		//	Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "HotdogBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+		//	goto Exit;
+		//}
 
-		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%c%c%c",
-			ManufacturerBlockInfoA.BatteryManufactureName[0],
-			ManufacturerBlockInfoA.BatteryManufactureName[1],
-			ManufacturerBlockInfoA.BatteryManufactureName[2]);
+		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%c%c",
+			0x4f,  // O
+			0x50   // P
+		);
 
 		Trace(
 			TRACE_LEVEL_INFORMATION,
@@ -577,22 +525,21 @@ Return Value:
 		break;
 
 	case BatteryDeviceName:
-		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
-		if (!NT_SUCCESS(Status))
-		{
-			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
-			goto Exit;
-		}
+		//Status = HotdogBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		//if (!NT_SUCCESS(Status))
+		//{
+		//	Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "HotdogBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+		//	goto Exit;
+		//}
 
-		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%c%c%c%c%c%c%c%c",
-			ManufacturerBlockInfoA.BatteryDeviceName[0],
-			ManufacturerBlockInfoA.BatteryDeviceName[1],
-			ManufacturerBlockInfoA.BatteryDeviceName[2],
-			ManufacturerBlockInfoA.BatteryDeviceName[3],
-			ManufacturerBlockInfoA.BatteryDeviceName[4],
-			ManufacturerBlockInfoA.BatteryDeviceName[5],
-			ManufacturerBlockInfoA.BatteryDeviceName[6],
-			ManufacturerBlockInfoA.BatteryDeviceName[7]);
+		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%c%c%c%c%c%c",
+			0x42,  //B
+			0x4c,  //L
+			0x50,  //P
+			0x37,  //7
+			0x34,  //4
+			0x35   //5
+		);
 
 		Trace(
 			TRACE_LEVEL_INFORMATION,
@@ -615,14 +562,14 @@ Return Value:
 		break;
 
 	case BatterySerialNumber:
-		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
-		if (!NT_SUCCESS(Status))
-		{
-			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
-			goto Exit;
-		}
+		//Status = HotdogBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		//if (!NT_SUCCESS(Status))
+		//{
+		//	Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "HotdogBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+		//	goto Exit;
+		//}
 
-		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%u", ManufacturerBlockInfoA.BatterySerialNumber);
+		swprintf_s(StringResult, sizeof(StringResult) / sizeof(WCHAR), L"%u", (UINT32)2333);
 
 		Trace(
 			TRACE_LEVEL_INFORMATION,
@@ -645,23 +592,23 @@ Return Value:
 		break;
 
 	case BatteryManufactureDate:
-		Status = SurfaceBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
-		if (!NT_SUCCESS(Status))
-		{
-			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SurfaceBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
-			goto Exit;
-		}
+		//Status = HotdogBatteryGetManufacturerBlockA(DevExt, &ManufacturerBlockInfoA);
+		//if (!NT_SUCCESS(Status))
+		//{
+		//	Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "HotdogBatteryGetManufacturerBlockA failed with Status = 0x%08lX\n", Status);
+		//	goto Exit;
+		//}
 
-		Trace(
-			TRACE_LEVEL_INFORMATION,
-			SURFACE_BATTERY_TRACE,
-			"BatteryManufactureDate: %d\n",
-			ManufacturerBlockInfoA.BatteryManufactureDate);
+		//Trace(
+		//	TRACE_LEVEL_INFORMATION,
+		//	SURFACE_BATTERY_TRACE,
+		//	"BatteryManufactureDate: %d\n",
+		//	ManufacturerBlockInfoA.BatteryManufactureDate);
 
-		//ManufactureDate.Year = ManufacturerBlockInfoA.BatteryManufactureDate;
+		////ManufactureDate.Year = ManufacturerBlockInfoA.BatteryManufactureDate;
 		ManufactureDate.Day = 1;
 		ManufactureDate.Month = 1;
-		ManufactureDate.Year = 2020;
+		ManufactureDate.Year = 2019;
 
 		ReturnBuffer = &ManufactureDate;
 		ReturnBufferLength = sizeof(BATTERY_MANUFACTURE_DATE);
@@ -669,14 +616,14 @@ Return Value:
 		break;
 
 	case BatteryGranularityInformation:
-		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x12, &ReportingScale.Capacity, 2);
+		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x0A, &ReportingScale.Capacity, 2);
 		if (!NT_SUCCESS(Status))
 		{
 			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
 			goto Exit;
 		}
 
-		ReportingScale.Capacity = SurfaceBatteryConvertToWatts(ReportingScale.Capacity);
+		ReportingScale.Capacity = HotdogBatteryConvertToWatts(ReportingScale.Capacity);
 		ReportingScale.Granularity = 1;
 
 		Trace(
@@ -692,7 +639,7 @@ Return Value:
 		break;
 
 	case BatteryTemperature:
-		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x06, &Temperature, 2);
+		Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x02, &Temperature, 2);
 		if (!NT_SUCCESS(Status))
 		{
 			Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
@@ -743,10 +690,14 @@ QueryInformationEnd:
 		Status);
 	return Status;
 }
+struct BQ27541_SOC_DATA {
+	UINT32 unkownDATA;
+	UINT16 SOC;
+};
 
 _Use_decl_annotations_
 NTSTATUS
-SurfaceBatteryQueryStatus(
+HotdogBatteryQueryStatus(
 	PVOID Context,
 	ULONG BatteryTag,
 	PBATTERY_STATUS BatteryStatus
@@ -792,7 +743,7 @@ Return Value:
 		goto QueryStatusEnd;
 	}
 
-	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x0A, &Flags, 2);
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x06, &Flags, 2);
 	if (!NT_SUCCESS(Status))
 	{
 		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
@@ -836,23 +787,22 @@ Return Value:
 		BatteryStatus->PowerState = BATTERY_CHARGING;
 	}
 
-	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x10, &BatteryStatus->Capacity, 2);
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x08, &BatteryStatus->Capacity, 2);
+	if (!NT_SUCCESS(Status))
+	{
+		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
+		goto QueryStatusEnd;
+	}
+	BatteryStatus->Capacity = HotdogBatteryConvertToWatts(BatteryStatus->Capacity);
+
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x04, &BatteryStatus->Voltage, 2);
 	if (!NT_SUCCESS(Status))
 	{
 		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
 		goto QueryStatusEnd;
 	}
 
-	BatteryStatus->Capacity = SurfaceBatteryConvertToWatts(BatteryStatus->Capacity);
-
-	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x08, &BatteryStatus->Voltage, 2);
-	if (!NT_SUCCESS(Status))
-	{
-		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
-		goto QueryStatusEnd;
-	}
-
-	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x14, &Rate, 2);
+	Status = SpbReadDataSynchronously(&DevExt->I2CContext, 0x10, &Rate, 2);
 	if (!NT_SUCCESS(Status))
 	{
 		Trace(TRACE_LEVEL_ERROR, SURFACE_BATTERY_TRACE, "SpbReadDataSynchronously failed with Status = 0x%08lX\n", Status);
@@ -861,7 +811,7 @@ Return Value:
 
 	BatteryStatus->Rate = Rate;
 
-	BatteryStatus->Rate = SurfaceBatteryConvertToWatts(BatteryStatus->Rate);
+	BatteryStatus->Rate = HotdogBatteryConvertToWatts(BatteryStatus->Rate);
 
 	Trace(
 		TRACE_LEVEL_INFORMATION,
@@ -888,7 +838,7 @@ QueryStatusEnd:
 
 _Use_decl_annotations_
 NTSTATUS
-SurfaceBatterySetStatusNotify(
+HotdogBatterySetStatusNotify(
 	PVOID Context,
 	ULONG BatteryTag,
 	PBATTERY_NOTIFY BatteryNotify
@@ -947,7 +897,7 @@ SetStatusNotifyEnd:
 
 _Use_decl_annotations_
 NTSTATUS
-SurfaceBatteryDisableStatusNotify(
+HotdogBatteryDisableStatusNotify(
 	PVOID Context
 )
 
@@ -987,7 +937,7 @@ Return Value:
 
 _Use_decl_annotations_
 NTSTATUS
-SurfaceBatterySetInformation(
+HotdogBatterySetInformation(
 	PVOID Context,
 	ULONG BatteryTag,
 	BATTERY_SET_INFORMATION_LEVEL Level,
@@ -1039,14 +989,14 @@ Return Value:
 	if (Level == BatteryCharge)
 	{
 		Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
-			"SurfaceBattery : BatteryCharge\n");
+			"HotdogBattery : BatteryCharge\n");
 
 		Status = STATUS_SUCCESS;
 	}
 	else if (Level == BatteryDischarge)
 	{
 		Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
-			"SurfaceBattery : BatteryDischarge\n");
+			"HotdogBattery : BatteryDischarge\n");
 
 		Status = STATUS_SUCCESS;
 	}
@@ -1059,11 +1009,11 @@ Return Value:
 		ChargingSource = (PBATTERY_CHARGING_SOURCE)Buffer;
 
 		Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
-			"SurfaceBattery : BatteryChargingSource Type = %d\n",
+			"HotdogBattery : BatteryChargingSource Type = %d\n",
 			ChargingSource->Type);
 
 		Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
-			"SurfaceBattery : Set MaxCurrentDraw = %u mA\n",
+			"HotdogBattery : Set MaxCurrentDraw = %u mA\n",
 			ChargingSource->MaxCurrent);
 
 		Status = STATUS_SUCCESS;
@@ -1072,7 +1022,7 @@ Return Value:
 	{
 		CriticalBias = (PULONG)Buffer;
 		Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
-			"SurfaceBattery : Set CriticalBias = %u mW\n",
+			"HotdogBattery : Set CriticalBias = %u mW\n",
 			*CriticalBias);
 
 		Status = STATUS_SUCCESS;
@@ -1081,7 +1031,7 @@ Return Value:
 	{
 		ChargerId = (PBATTERY_CHARGER_ID)Buffer;
 		Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
-			"SurfaceBattery : BatteryChargerId = %!GUID!\n",
+			"HotdogBattery : BatteryChargerId = %!GUID!\n",
 			ChargerId);
 
 		Status = STATUS_SUCCESS;
@@ -1091,7 +1041,7 @@ Return Value:
 		ChargerStatus = (PBATTERY_CHARGER_STATUS)Buffer;
 
 		Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
-			"SurfaceBattery : BatteryChargingSource Type = %d\n",
+			"HotdogBattery : BatteryChargingSource Type = %d\n",
 			ChargerStatus->Type);
 
 		/*if (ChargerStatus->Type == BatteryChargingSourceType_USB)
@@ -1099,13 +1049,13 @@ Return Value:
 			UsbChargerStatus = (PBATTERY_USB_CHARGER_STATUS)Buffer;
 
 			Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
-				"SurfaceBattery : BatteryChargingSourceType_USB: Flags = %d, MaxCurrent = %d, Voltage = %d, PortType = %d, PortId = %llu, OemCharger = %!GUID!\n",
+				"HotdogBattery : BatteryChargingSourceType_USB: Flags = %d, MaxCurrent = %d, Voltage = %d, PortType = %d, PortId = %llu, OemCharger = %!GUID!\n",
 				UsbChargerStatus->Flags, UsbChargerStatus->MaxCurrent, UsbChargerStatus->Voltage, UsbChargerStatus->PortType, UsbChargerStatus->PortId, &UsbChargerStatus->OemCharger);
 
 			UsbFnPortType = (PUSBFN_PORT_TYPE)UsbChargerStatus->PowerSourceInformation;
 
 			Trace(TRACE_LEVEL_INFORMATION, SURFACE_BATTERY_INFO,
-				"SurfaceBattery : UsbFnPortType = %d\n",
+				"HotdogBattery : UsbFnPortType = %d\n",
 				*UsbFnPortType);
 		}*/
 

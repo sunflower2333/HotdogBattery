@@ -4,11 +4,11 @@ Copyright (c) Microsoft Corporation. All rights reserved.
 
 Module Name:
 
-    SurfaceBattery.h
+    HotdogBattery.h
 
 Abstract:
 
-    This is the header file for the Surface battery driver.
+    This is the header file for the Hotdog battery driver.
 
     N.B. This code is provided "AS IS" without any expressed or implied warranty.
 
@@ -79,15 +79,16 @@ Abstract:
 #define CHEM_SIZE 0x4
 
 #pragma pack(push, 1)
-typedef struct _BQ27742_MANUF_INFO_TYPE
-{
-    UINT16 BatteryManufactureDate;
-    UINT32 BatterySerialNumber;
-    BYTE BatteryManufactureName[MFG_NAME_SIZE];
-    BYTE BatteryDeviceName[DEVICE_NAME_SIZE];
-    BYTE Chemistry[CHEM_SIZE];
-} BQ27742_MANUF_INFO_TYPE, * PBQ27742_MANUF_INFO_TYPE;
+//typedef struct _BQ27742_MANUF_INFO_TYPE
+//{
+//    UINT16 BatteryManufactureDate;
+//    UINT32 BatterySerialNumber;
+//    BYTE BatteryManufactureName[MFG_NAME_SIZE];
+//    BYTE BatteryDeviceName[DEVICE_NAME_SIZE];
+//    BYTE Chemistry[CHEM_SIZE];
+//} BQ27742_MANUF_INFO_TYPE, * PBQ27742_MANUF_INFO_TYPE;
 #pragma pack(pop)
+
 
 typedef struct {
     UNICODE_STRING                  RegistryPath;
@@ -129,13 +130,13 @@ WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(SURFACE_BATTERY_FDO_DATA, GetDeviceExtension)
 
 _IRQL_requires_same_
 VOID
-SurfaceBatteryPrepareHardware(
+HotdogBatteryPrepareHardware(
     _In_ WDFDEVICE Device
 );
 
-BCLASS_QUERY_TAG_CALLBACK SurfaceBatteryQueryTag;
-BCLASS_QUERY_INFORMATION_CALLBACK SurfaceBatteryQueryInformation;
-BCLASS_SET_INFORMATION_CALLBACK SurfaceBatterySetInformation;
-BCLASS_QUERY_STATUS_CALLBACK SurfaceBatteryQueryStatus;
-BCLASS_SET_STATUS_NOTIFY_CALLBACK SurfaceBatterySetStatusNotify;
-BCLASS_DISABLE_STATUS_NOTIFY_CALLBACK SurfaceBatteryDisableStatusNotify;
+BCLASS_QUERY_TAG_CALLBACK HotdogBatteryQueryTag;
+BCLASS_QUERY_INFORMATION_CALLBACK HotdogBatteryQueryInformation;
+BCLASS_SET_INFORMATION_CALLBACK HotdogBatterySetInformation;
+BCLASS_QUERY_STATUS_CALLBACK HotdogBatteryQueryStatus;
+BCLASS_SET_STATUS_NOTIFY_CALLBACK HotdogBatterySetStatusNotify;
+BCLASS_DISABLE_STATUS_NOTIFY_CALLBACK HotdogBatteryDisableStatusNotify;

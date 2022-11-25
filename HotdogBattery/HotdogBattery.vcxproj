@@ -12,11 +12,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Spb.h" />
-    <ClInclude Include="SurfaceBattery.h" />
+    <ClInclude Include="HotdogBattery.h" />
     <ClInclude Include="Trace.h" />
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="SurfaceBattery.inf" />
+    <Inf Include="HotdogBattery.inf" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9E870783-5446-41BB-BD4B-662089C22DBA}</ProjectGuid>
@@ -25,7 +25,8 @@
     <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
     <Configuration>Debug</Configuration>
     <Platform Condition="'$(Platform)' == ''">Win32</Platform>
-    <RootNamespace>SurfaceBattery</RootNamespace>
+    <RootNamespace>HotdogBattery</RootNamespace>
+    <ProjectName>HotdogBattery</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
